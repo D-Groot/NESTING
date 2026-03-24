@@ -1,0 +1,1473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LifeOS - Habit & Career Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        * {
+            font-family: 'Inter', sans-serif;
+            box-sizing: border-box;
+        }
+        
+        .mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        body {
+            background: #0d1117;
+            color: #c9d1d9;
+            overflow-x: hidden;
+            line-height: 1.5;
+        }
+
+        .gh-level-0 { background-color: #161b22; }
+        .gh-level-1 { background-color: #0e4429; }
+        .gh-level-2 { background-color: #006d32; }
+        .gh-level-3 { background-color: #26a641; }
+        .gh-level-4 { background-color: #39d353; }
+
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            z-index: -1;
+            opacity: 0.08;
+            animation: rotate 30s linear infinite;
+        }
+
+        @keyframes rotate {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .glass-panel {
+            background: rgba(22, 27, 34, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(48, 54, 61, 0.8);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+        }
+
+        .mobile-nav {
+            display: none;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(13, 17, 23, 0.98);
+            border-top: 1px solid rgba(48, 54, 61, 0.8);
+            z-index: 100;
+            padding: 0.5rem;
+        }
+
+        @media (max-width: 768px) {
+            .desktop-nav { display: none; }
+            .mobile-nav { display: flex; justify-content: space-around; }
+            .main-content { padding-bottom: 80px; }
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            padding: 8px 16px;
+            color: #8b949e;
+            transition: all 0.2s;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .nav-item:hover, .nav-item.active {
+            color: #58a6ff;
+            background: rgba(88, 166, 255, 0.1);
+        }
+
+        .nav-item span { font-size: 0.7rem; }
+
+        .habit-card {
+            background: rgba(22, 27, 34, 0.6);
+            border: 1px solid rgba(48, 54, 61, 0.6);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .habit-card:hover {
+            transform: translateY(-2px);
+            border-color: #58a6ff;
+            box-shadow: 0 4px 12px rgba(88, 166, 255, 0.15);
+        }
+
+        .habit-card.completed {
+            background: rgba(34, 197, 94, 0.1);
+            border-color: #238636;
+        }
+
+        .habit-card.past-view {
+            opacity: 0.7;
+            pointer-events: none;
+        }
+
+        .check-btn {
+            width: 28px;
+            height: 28px;
+            border: 2px solid #30363d;
+            border-radius: 50%;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .check-btn:hover { border-color: #238636; transform: scale(1.1); }
+        .check-btn.checked { background: #238636; border-color: #238636; }
+
+        .streak-grid {
+            display: grid;
+            grid-template-columns: repeat(53, 1fr);
+            gap: 3px;
+        }
+
+        @media (max-width: 1200px) { .streak-grid { grid-template-columns: repeat(26, 1fr); } }
+        @media (max-width: 768px) { .streak-grid { grid-template-columns: repeat(13, 1fr); } }
+
+        .streak-cell {
+            aspect-ratio: 1;
+            border-radius: 2px;
+            transition: transform 0.2s;
+            cursor: pointer;
+        }
+
+        .streak-cell:hover {
+            transform: scale(1.2);
+            z-index: 10;
+            position: relative;
+            box-shadow: 0 0 10px rgba(255,255,255,0.3);
+        }
+
+        .streak-cell.selected {
+            ring: 2px solid #58a6ff;
+            box-shadow: 0 0 15px #58a6ff;
+        }
+
+        .video-wrapper {
+            position: relative;
+            background: #000;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .video-wrapper iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        .profile-upload {
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+        }
+
+        .profile-upload:hover .profile-overlay { opacity: 1; }
+
+        .profile-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s;
+            border-radius: 50%;
+        }
+
+        .note-card {
+            background: rgba(22, 27, 34, 0.6);
+            border-left: 3px solid #58a6ff;
+            transition: all 0.3s;
+        }
+
+        .note-card:hover {
+            transform: translateX(5px);
+            border-left-color: #238636;
+        }
+
+        .roadmap-node {
+            position: relative;
+            padding-left: 2rem;
+            padding-bottom: 2rem;
+            border-left: 2px solid #30363d;
+        }
+
+        .roadmap-node::before {
+            content: '';
+            position: absolute;
+            left: -6px;
+            top: 0;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #30363d;
+            transition: all 0.3s;
+        }
+
+        .roadmap-node.completed::before {
+            background: #238636;
+            box-shadow: 0 0 10px #238636;
+        }
+
+        .roadmap-node:last-child { border-left: 2px solid transparent; }
+
+        .progress-ring { transform: rotate(-90deg); }
+
+        .confetti {
+            position: fixed;
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        .page {
+            display: none;
+            animation: fadeIn 0.4s ease;
+        }
+
+        .page.active { display: block; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #238636 0%, #2ea043 100%);
+            color: white;
+            transition: all 0.3s;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(35, 134, 54, 0.4);
+        }
+
+        .category-pill {
+            font-size: 0.65rem;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        @media (max-width: 640px) {
+            .streak-grid { grid-template-columns: repeat(7, 1fr); }
+            .glass-panel { padding: 1rem; }
+            h1 { font-size: 1.5rem; }
+        }
+
+        .video-tab {
+            padding: 0.5rem 1rem;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .video-tab.active {
+            border-bottom-color: #ef4444;
+            color: white;
+        }
+
+        .playlist-item {
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .playlist-item:hover { background: rgba(255,255,255,0.05); }
+        .playlist-item.active { background: rgba(239, 68, 68, 0.2); border-left: 3px solid #ef4444; }
+
+        .time-travel-banner {
+            background: linear-gradient(90deg, #1f6feb 0%, #388bfd 100%);
+            animation: pulse-blue 2s infinite;
+        }
+
+        @keyframes pulse-blue {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+
+        .date-picker::-webkit-calendar-picker-indicator {
+            filter: invert(1);
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <div class="gradient-bg"></div>
+    
+    <!-- Time Travel Banner (shown when viewing past) -->
+    <div id="time-travel-banner" class="time-travel-banner hidden fixed top-0 left-0 right-0 z-[60] px-4 py-2 text-center text-sm font-medium">
+        <div class="flex items-center justify-center gap-3">
+            <i data-lucide="clock" class="w-4 h-4"></i>
+            <span>Viewing: <span id="viewing-date">Today</span></span>
+            <button onclick="returnToToday()" class="ml-4 px-3 py-1 bg-white/20 hover:bg-white/30 rounded text-xs transition-colors">
+                Return to Today
+            </button>
+        </div>
+    </div>
+
+    <!-- Desktop Navigation -->
+    <nav class="desktop-nav glass-panel fixed top-0 left-0 right-0 z-50 px-6 py-4" id="desktop-nav">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-gradient-to-br from-green-500 to-blue-600 flex items-center justify-center font-bold text-lg">L</div>
+                <span class="font-bold text-xl tracking-tight">LifeOS</span>
+            </div>
+            
+            <div class="flex items-center gap-1">
+                <button onclick="showPage('dashboard')" class="nav-item active px-4 py-2 rounded-lg flex-row gap-2" data-page="dashboard">
+                    <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+                    <span class="text-sm font-medium">Dashboard</span>
+                </button>
+                <button onclick="showPage('roadmap')" class="nav-item px-4 py-2 rounded-lg flex-row gap-2" data-page="roadmap">
+                    <i data-lucide="map" class="w-5 h-5"></i>
+                    <span class="text-sm font-medium">Roadmap</span>
+                </button>
+                <button onclick="showPage('notes')" class="nav-item px-4 py-2 rounded-lg flex-row gap-2" data-page="notes">
+                    <i data-lucide="notebook-pen" class="w-5 h-5"></i>
+                    <span class="text-sm font-medium">Journal</span>
+                </button>
+                <button onclick="showPage('profile')" class="nav-item px-4 py-2 rounded-lg flex-row gap-2" data-page="profile">
+                    <i data-lucide="user" class="w-5 h-5"></i>
+                    <span class="text-sm font-medium">Profile</span>
+                </button>
+            </div>
+            
+            <div class="flex items-center gap-3">
+                <div class="text-right hidden md:block">
+                    <div class="text-sm font-medium" id="user-name">User</div>
+                    <div class="text-xs text-gray-500" id="current-streak">🔥 0 days</div>
+                </div>
+                <div class="profile-upload w-10 h-10 rounded-full bg-gray-700 overflow-hidden" onclick="document.getElementById('profile-input').click()">
+                    <img id="nav-profile-img" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 40 40'%3E%3Crect fill='%2330363d' width='40' height='40'/%3E%3Ctext fill='%238b949e' font-family='sans-serif' font-size='16' dy='.3em' text-anchor='middle' x='20' y='20'%3E👤%3C/text%3E%3C/svg%3E" class="w-full h-full object-cover">
+                    <div class="profile-overlay">
+                        <i data-lucide="camera" class="w-5 h-5 text-white"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Mobile Navigation -->
+    <nav class="mobile-nav">
+        <button onclick="showPage('dashboard')" class="nav-item active" data-page="dashboard">
+            <i data-lucide="layout-dashboard" class="w-6 h-6"></i>
+            <span>Home</span>
+        </button>
+        <button onclick="showPage('roadmap')" class="nav-item" data-page="roadmap">
+            <i data-lucide="map" class="w-6 h-6"></i>
+            <span>Goals</span>
+        </button>
+        <button onclick="showPage('notes')" class="nav-item" data-page="notes">
+            <i data-lucide="notebook-pen" class="w-6 h-6"></i>
+            <span>Notes</span>
+        </button>
+        <button onclick="showPage('profile')" class="nav-item" data-page="profile">
+            <i data-lucide="user" class="w-6 h-6"></i>
+            <span>Me</span>
+        </button>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content pt-20 md:pt-24 px-4 md:px-6 max-w-7xl mx-auto">
+        
+        <!-- Dashboard Page -->
+        <div id="page-dashboard" class="page active">
+            <!-- Time Travel Controls -->
+            <div class="glass-panel rounded-xl p-4 mb-6 flex flex-col md:flex-row items-center justify-between gap-4">
+                <div class="flex items-center gap-3">
+                    <i data-lucide="calendar-days" class="w-5 h-5 text-blue-400"></i>
+                    <span class="text-sm text-gray-400">Time Travel:</span>
+                    <input type="date" id="date-picker" class="date-picker bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500" onchange="travelToDate(this.value)">
+                </div>
+                <div class="text-sm text-gray-500" id="date-display">Today: <span class="text-white font-medium" id="today-date"></span></div>
+            </div>
+
+            <!-- Header Stats -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
+                <div class="glass-panel rounded-xl p-4">
+                    <div class="text-xs text-gray-500 mb-1">Current Streak</div>
+                    <div class="text-2xl md:text-3xl font-bold text-green-400 stats-number flex items-center gap-2">
+                        <span class="text-2xl">🔥</span>
+                        <span id="header-streak">0</span>
+                    </div>
+                </div>
+                <div class="glass-panel rounded-xl p-4">
+                    <div class="text-xs text-gray-500 mb-1">Completed</div>
+                    <div class="text-2xl md:text-3xl font-bold text-blue-400 stats-number" id="header-completed">0/0</div>
+                </div>
+                <div class="glass-panel rounded-xl p-4">
+                    <div class="text-xs text-gray-500 mb-1">Total Done</div>
+                    <div class="text-2xl md:text-3xl font-bold text-purple-400 stats-number" id="header-total">0</div>
+                </div>
+                <div class="glass-panel rounded-xl p-4">
+                    <div class="text-xs text-gray-500 mb-1">Best Day</div>
+                    <div class="text-lg md:text-xl font-bold text-yellow-400" id="header-best">-</div>
+                </div>
+            </div>
+
+            <div class="grid lg:grid-cols-3 gap-6">
+                <!-- Left Column -->
+                <div class="lg:col-span-2 space-y-6">
+                    <!-- GitHub-style Streak -->
+                    <div class="glass-panel rounded-2xl p-4 md:p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-lg font-bold flex items-center gap-2">
+                                <i data-lucide="flame" class="w-5 h-5 text-orange-500"></i>
+                                Contribution Graph
+                            </h2>
+                            <div class="flex items-center gap-2 text-xs text-gray-500">
+                                <span>Less</span>
+                                <div class="flex gap-1">
+                                    <div class="w-3 h-3 rounded-sm gh-level-0"></div>
+                                    <div class="w-3 h-3 rounded-sm gh-level-1"></div>
+                                    <div class="w-3 h-3 rounded-sm gh-level-2"></div>
+                                    <div class="w-3 h-3 rounded-sm gh-level-3"></div>
+                                    <div class="w-3 h-3 rounded-sm gh-level-4"></div>
+                                </div>
+                                <span>More</span>
+                            </div>
+                        </div>
+                        <div class="streak-grid" id="streak-grid"></div>
+                        <div class="mt-4 flex justify-between text-xs text-gray-500">
+                            <span>Click any day to view history</span>
+                            <span id="streak-stats">0 contributions</span>
+                        </div>
+                    </div>
+
+                    <!-- Habits Section -->
+                    <div class="glass-panel rounded-2xl p-4 md:p-6">
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+                            <h2 class="text-lg font-bold" id="habits-title">Today's Habits</h2>
+                            <button onclick="toggleAddHabit()" class="btn-primary px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2" id="add-habit-btn">
+                                <i data-lucide="plus" class="w-4 h-4"></i>
+                                Add Habit
+                            </button>
+                        </div>
+
+                        <div id="add-habit-form" class="hidden mb-4 p-4 bg-gray-800/50 rounded-xl border border-gray-700">
+                            <form onsubmit="handleAddHabit(event)" class="space-y-3">
+                                <input type="text" id="new-habit-name" placeholder="Habit name..." class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:border-green-500 outline-none" required>
+                                <div class="flex gap-2">
+                                    <select id="new-habit-category" class="flex-1 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm outline-none">
+                                        <option value="health">Health</option>
+                                        <option value="career">Career</option>
+                                        <option value="learning">Learning</option>
+                                        <option value="creative">Creative</option>
+                                        <option value="social">Social</option>
+                                    </select>
+                                    <button type="submit" class="btn-primary px-4 py-2 rounded-lg text-sm">Add</button>
+                                    <button type="button" onclick="toggleAddHabit()" class="px-4 py-2 rounded-lg text-sm bg-gray-700 hover:bg-gray-600">Cancel</button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div id="habits-list" class="space-y-3"></div>
+                    </div>
+
+                    <!-- Daily Notes -->
+                    <div class="glass-panel rounded-2xl p-4 md:p-6">
+                        <h2 class="text-lg font-bold mb-4 flex items-center gap-2">
+                            <i data-lucide="pen-tool" class="w-5 h-5 text-blue-400"></i>
+                            <span id="notes-title">Daily Journal</span>
+                        </h2>
+                        <div class="space-y-3" id="note-input-section">
+                            <textarea id="daily-note" placeholder="How was your day? What did you learn? How are you feeling?" 
+                                class="w-full bg-gray-900/50 border border-gray-700 rounded-xl p-4 text-sm focus:border-blue-500 outline-none transition-colors"></textarea>
+                            <div class="flex justify-between items-center">
+                                <div class="flex gap-2 text-xs text-gray-500">
+                                    <span id="note-date">Today</span>
+                                    <span id="note-count">0 characters</span>
+                                </div>
+                                <button onclick="saveDailyNote()" class="btn-primary px-4 py-2 rounded-lg text-sm flex items-center gap-2">
+                                    <i data-lucide="save" class="w-4 h-4"></i>
+                                    Save Entry
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div id="recent-notes" class="mt-6 space-y-3 max-h-64 overflow-y-auto"></div>
+                    </div>
+                </div>
+
+                <!-- Right Column -->
+                <div class="space-y-6">
+                    <!-- Media Player -->
+                    <div class="glass-panel rounded-2xl p-4">
+                        <div class="flex justify-between items-center mb-3">
+                            <h3 class="font-bold text-sm flex items-center gap-2">
+                                <i data-lucide="play-circle" class="w-4 h-4 text-red-500"></i>
+                                Media Player
+                            </h3>
+                            <span class="text-xs text-gray-500" id="media-date-label">Today</span>
+                        </div>
+
+                        <!-- Video Source Tabs -->
+                        <div class="flex border-b border-gray-800 mb-3">
+                            <button class="video-tab active text-sm text-gray-400 hover:text-white" onclick="switchVideoTab('youtube', this)">YouTube</button>
+                            <button class="video-tab text-sm text-gray-400 hover:text-white" onclick="switchVideoTab('local', this)">Local Videos</button>
+                            <button class="video-tab text-sm text-gray-400 hover:text-white" onclick="switchVideoTab('playlist', this)">My Playlist</button>
+                        </div>
+
+                        <!-- YouTube Section -->
+                        <div id="video-youtube" class="video-section">
+                            <div class="flex gap-2 mb-3">
+                                <input type="text" id="youtube-url" placeholder="Paste YouTube URL..." class="flex-1 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-xs outline-none focus:border-red-500">
+                                <button onclick="loadYouTubeVideo()" class="bg-red-600 hover:bg-red-500 px-3 py-2 rounded-lg text-xs transition-colors">
+                                    <i data-lucide="play" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                            <div class="video-wrapper aspect-video bg-black rounded-lg overflow-hidden mb-3" id="youtube-player">
+                                <div class="w-full h-full flex items-center justify-center text-gray-600 text-sm">
+                                    <div class="text-center p-4">
+                                        <i data-lucide="youtube" class="w-12 h-12 mx-auto mb-2 opacity-50"></i>
+                                        <p>Enter YouTube URL to play</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex gap-2 mb-3 overflow-x-auto pb-2">
+                                <button onclick="quickYouTube('jfKfPfyJRdk')" class="px-3 py-1.5 rounded-full bg-gray-800 text-xs whitespace-nowrap hover:bg-gray-700">🎵 Lofi</button>
+                                <button onclick="quickYouTube('5qm8PH4xAss')" class="px-3 py-1.5 rounded-full bg-gray-800 text-xs whitespace-nowrap hover:bg-gray-700">🔥 Motivation</button>
+                                <button onclick="quickYouTube('inpok4MKVLM')" class="px-3 py-1.5 rounded-full bg-gray-800 text-xs whitespace-nowrap hover:bg-gray-700">🧘 Meditation</button>
+                            </div>
+                            <button onclick="saveToPlaylist()" class="w-full py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-xs flex items-center justify-center gap-2">
+                                <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                                Save to My Playlist
+                            </button>
+                        </div>
+
+                        <!-- Local Videos Section -->
+                        <div id="video-local" class="video-section hidden">
+                            <div class="video-wrapper aspect-video bg-black rounded-lg overflow-hidden mb-3">
+                                <video id="local-video-player" class="w-full h-full object-cover" controls loop>
+                                    <source src="https://raw.githubusercontent.com/D-Groot/Fanpage/main/WhatsApp%20Video%202026-03-22%20at%203.37.36%20PM.mp4" type="video/mp4">
+                                </video>
+                            </div>
+                            <div class="grid grid-cols-3 gap-2">
+                                <button onclick="playLocalVideo(0)" class="aspect-video rounded-lg bg-gray-800 overflow-hidden relative hover:ring-2 hover:ring-blue-500 transition-all">
+                                    <span class="absolute inset-0 flex items-center justify-center text-xs">Video 1</span>
+                                </button>
+                                <button onclick="playLocalVideo(1)" class="aspect-video rounded-lg bg-gray-800 overflow-hidden relative hover:ring-2 hover:ring-blue-500 transition-all">
+                                    <span class="absolute inset-0 flex items-center justify-center text-xs">Video 2</span>
+                                </button>
+                                <button onclick="playLocalVideo(2)" class="aspect-video rounded-lg bg-gray-800 overflow-hidden relative hover:ring-2 hover:ring-blue-500 transition-all">
+                                    <span class="absolute inset-0 flex items-center justify-center text-xs">Video 3</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Playlist Section -->
+                        <div id="video-playlist" class="video-section hidden">
+                            <div class="video-wrapper aspect-video bg-black rounded-lg overflow-hidden mb-3" id="playlist-player">
+                                <div class="w-full h-full flex items-center justify-center text-gray-600 text-sm">
+                                    <div class="text-center p-4">
+                                        <i data-lucide="list-music" class="w-12 h-12 mx-auto mb-2 opacity-50"></i>
+                                        <p>Select a video from your playlist</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="playlist-items" class="space-y-2 max-h-48 overflow-y-auto">
+                                <p class="text-xs text-gray-500 text-center py-4">No saved videos yet</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Weekly Stats -->
+                    <div class="glass-panel rounded-2xl p-4">
+                        <h3 class="font-bold mb-3 text-sm">This Week</h3>
+                        <div class="grid grid-cols-7 gap-2" id="week-grid"></div>
+                    </div>
+
+                    <!-- Today's Playlist (if viewing past) -->
+                    <div id="past-playlist-info" class="glass-panel rounded-2xl p-4 hidden">
+                        <h3 class="font-bold mb-2 text-sm flex items-center gap-2">
+                            <i data-lucide="music" class="w-4 h-4 text-purple-400"></i>
+                            Watched That Day
+                        </h3>
+                        <div id="past-playlist-content" class="text-sm text-gray-400"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Roadmap Page -->
+        <div id="page-roadmap" class="page">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+                <div>
+                    <h1 class="text-3xl font-bold mb-2">Career Roadmap</h1>
+                    <p class="text-gray-400">Track your long-term goals and milestones</p>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="importRoadmap()" class="px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-sm flex items-center gap-2">
+                        <i data-lucide="upload" class="w-4 h-4"></i>
+                        Import
+                    </button>
+                    <button onclick="exportRoadmap()" class="px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-sm flex items-center gap-2">
+                        <i data-lucide="download" class="w-4 h-4"></i>
+                        Export
+                    </button>
+                    <button onclick="addMilestone()" class="btn-primary px-4 py-2 rounded-lg text-sm flex items-center gap-2">
+                        <i data-lucide="plus" class="w-4 h-4"></i>
+                        Add Milestone
+                    </button>
+                </div>
+            </div>
+
+            <div class="grid lg:grid-cols-3 gap-6">
+                <div class="lg:col-span-2 glass-panel rounded-2xl p-6">
+                    <div id="roadmap-container" class="space-y-0"></div>
+                </div>
+
+                <div class="space-y-6">
+                    <div class="glass-panel rounded-2xl p-6">
+                        <h3 class="font-bold mb-4">Progress Overview</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <div class="flex justify-between text-sm mb-1">
+                                    <span class="text-gray-400">Academic</span>
+                                    <span class="font-medium" id="academic-progress">0%</span>
+                                </div>
+                                <div class="h-2 bg-gray-800 rounded-full overflow-hidden">
+                                    <div id="academic-bar" class="h-full bg-blue-500 rounded-full transition-all duration-500" style="width: 0%"></div>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-sm mb-1">
+                                    <span class="text-gray-400">Career</span>
+                                    <span class="font-medium" id="career-progress">0%</span>
+                                </div>
+                                <div class="h-2 bg-gray-800 rounded-full overflow-hidden">
+                                    <div id="career-bar" class="h-full bg-green-500 rounded-full transition-all duration-500" style="width: 0%"></div>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-sm mb-1">
+                                    <span class="text-gray-400">Personal</span>
+                                    <span class="font-medium" id="personal-progress">0%</span>
+                                </div>
+                                <div class="h-2 bg-gray-800 rounded-full overflow-hidden">
+                                    <div id="personal-bar" class="h-full bg-purple-500 rounded-full transition-all duration-500" style="width: 0%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="glass-panel rounded-2xl p-6">
+                        <h3 class="font-bold mb-4">Active Goals</h3>
+                        <div id="active-goals" class="space-y-3">
+                            <p class="text-sm text-gray-500 text-center py-4">No active goals yet</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notes Page -->
+        <div id="page-notes" class="page">
+            <div class="flex justify-between items-center mb-6">
+                <h1 class="text-3xl font-bold">Journal</h1>
+                <button onclick="exportNotes()" class="px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-sm flex items-center gap-2">
+                    <i data-lucide="download" class="w-4 h-4"></i>
+                    Export All
+                </button>
+            </div>
+
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4" id="all-notes"></div>
+        </div>
+
+        <!-- Profile Page -->
+        <div id="page-profile" class="page">
+            <div class="max-w-2xl mx-auto">
+                <div class="glass-panel rounded-2xl p-8">
+                    <h1 class="text-3xl font-bold mb-6">Profile Settings</h1>
+                    
+                    <div class="flex flex-col items-center mb-8">
+                        <div class="w-32 h-32 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 p-1 mb-4">
+                            <div class="w-full h-full rounded-full bg-gray-800 overflow-hidden profile-upload" onclick="document.getElementById('settings-profile-input').click()">
+                                <img id="settings-profile-img" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='128' height='128' viewBox='0 0 128 128'%3E%3Crect fill='%2330363d' width='128' height='128'/%3E%3Ctext fill='%238b949e' font-family='sans-serif' font-size='48' dy='.3em' text-anchor='middle' x='64' y='64'%3E👤%3C/text%3E%3C/svg%3E" class="w-full h-full object-cover">
+                                <div class="profile-overlay rounded-full">
+                                    <i data-lucide="camera" class="w-8 h-8 text-white"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <input type="file" id="settings-profile-input" accept="image/*" class="hidden" onchange="handleProfileUpload(event, 'settings')">
+                        <button onclick="document.getElementById('settings-profile-input').click()" class="text-sm text-blue-400 hover:text-blue-300">Change Photo</button>
+                    </div>
+
+                    <form onsubmit="saveProfileSettings(event)" class="space-y-4">
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">Display Name</label>
+                            <input type="text" id="settings-name" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 focus:border-blue-500 outline-none" placeholder="Your Name">
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">Bio</label>
+                            <textarea id="settings-bio" rows="3" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 focus:border-blue-500 outline-none" placeholder="Tell us about yourself..."></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">Daily Reminder Time</label>
+                            <input type="time" id="settings-time" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 focus:border-blue-500 outline-none">
+                        </div>
+                        <button type="submit" class="w-full btn-primary py-3 rounded-lg font-medium mt-4">
+                            Save Changes
+                        </button>
+                    </form>
+
+                    <div class="mt-8 pt-8 border-t border-gray-800">
+                        <h3 class="font-bold mb-4 text-red-400">Danger Zone</h3>
+                        <button onclick="clearAllData()" class="w-full py-3 rounded-lg border border-red-500/50 text-red-400 hover:bg-red-500/10 transition-colors">
+                            Clear All Data
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <input type="file" id="roadmap-import" accept=".json" class="hidden" onchange="handleRoadmapImport(event)">
+
+    <script>
+        // Global State
+        let currentPage = 'dashboard';
+        let viewingDate = new Date().toISOString().split('T')[0];
+        let today = new Date().toISOString().split('T')[0];
+        let habits = JSON.parse(localStorage.getItem('lifeos_habits')) || [];
+        let notes = JSON.parse(localStorage.getItem('lifeos_notes')) || {};
+        let roadmap = JSON.parse(localStorage.getItem('lifeos_roadmap')) || [];
+        let profile = JSON.parse(localStorage.getItem('lifeos_profile')) || { name: 'User', bio: 'Building better habits daily' };
+        let history = JSON.parse(localStorage.getItem('lifeos_history')) || {};
+        let playlists = JSON.parse(localStorage.getItem('lifeos_playlists')) || {};
+        let currentVideoId = null;
+
+        // Local video sources
+        const localVideos = [
+            'https://raw.githubusercontent.com/D-Groot/Fanpage/main/WhatsApp%20Video%202026-03-22%20at%203.34.11%20PM.mp4',
+            'https://raw.githubusercontent.com/D-Groot/Fanpage/main/WhatsApp%20Video%202026-03-22%20at%203.34.52%20PM.mp4',
+            'https://raw.githubusercontent.com/D-Groot/Fanpage/main/WhatsApp%20Video%202026-03-22%20at%203.37.36%20PM.mp4'
+        ];
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            init();
+            renderStreakGrid();
+            renderHabits();
+            renderNotes();
+            renderRoadmap();
+            renderPlaylist();
+            updateStats();
+            loadProfile();
+            setupDatePicker();
+        });
+
+        function init() {
+            document.getElementById('today-date').textContent = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+            document.getElementById('date-picker').value = today;
+            document.getElementById('date-picker').max = today;
+            
+            document.getElementById('daily-note').addEventListener('input', (e) => {
+                document.getElementById('note-count').textContent = `${e.target.value.length} characters`;
+            });
+        }
+
+        function setupDatePicker() {
+            const picker = document.getElementById('date-picker');
+            picker.addEventListener('change', (e) => {
+                if (e.target.value) travelToDate(e.target.value);
+            });
+        }
+
+        // Time Travel Feature
+        function travelToDate(dateStr) {
+            viewingDate = dateStr;
+            const isToday = dateStr === today;
+            
+            // Update UI
+            document.getElementById('viewing-date').textContent = new Date(dateStr).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            document.getElementById('habits-title').textContent = isToday ? "Today's Habits" : `Habits for ${new Date(dateStr).toLocaleDateString()}`;
+            document.getElementById('notes-title').textContent = isToday ? "Daily Journal" : `Journal for ${new Date(dateStr).toLocaleDateString()}`;
+            document.getElementById('media-date-label').textContent = isToday ? "Today" : new Date(dateStr).toLocaleDateString();
+            document.getElementById('note-date').textContent = new Date(dateStr).toLocaleDateString();
+            
+            // Show/hide time travel banner
+            const banner = document.getElementById('time-travel-banner');
+            if (!isToday) {
+                banner.classList.remove('hidden');
+                document.getElementById('desktop-nav').style.top = '40px';
+                document.body.style.paddingTop = '40px';
+            } else {
+                banner.classList.add('hidden');
+                document.getElementById('desktop-nav').style.top = '0';
+                document.body.style.paddingTop = '0';
+            }
+            
+            // Show/hide add buttons based on date
+            const addBtn = document.getElementById('add-habit-btn');
+            const noteInput = document.getElementById('note-input-section');
+            
+            if (isToday) {
+                addBtn.classList.remove('hidden');
+                noteInput.classList.remove('hidden');
+            } else {
+                addBtn.classList.add('hidden');
+                noteInput.classList.add('hidden');
+            }
+            
+            // Render habits for that date
+            renderHabitsForDate(dateStr);
+            
+            // Render notes for that date
+            renderNotesForDate(dateStr);
+            
+            // Show playlist for that date
+            renderPlaylistForDate(dateStr);
+            
+            // Highlight selected date in streak grid
+            document.querySelectorAll('.streak-cell').forEach(cell => cell.classList.remove('selected'));
+            const selectedCell = document.querySelector(`[data-date="${dateStr}"]`);
+            if (selectedCell) selectedCell.classList.add('selected');
+            
+            lucide.createIcons();
+        }
+
+        function returnToToday() {
+            document.getElementById('date-picker').value = today;
+            travelToDate(today);
+        }
+
+        function renderHabitsForDate(dateStr) {
+            const container = document.getElementById('habits-list');
+            const isPast = dateStr !== today;
+            
+            if (habits.length === 0) {
+                container.innerHTML = '<p class="text-center text-gray-500 py-8">No habits yet.</p>';
+                return;
+            }
+            
+            // Get completion status for this specific date
+            const dayHistory = history[dateStr] || [];
+            
+            container.innerHTML = habits.map(h => {
+                const wasCompleted = dayHistory.includes(h.id);
+                return `
+                    <div class="habit-card rounded-xl p-4 flex items-center gap-4 ${wasCompleted ? 'completed' : ''} ${isPast ? 'past-view' : ''}">
+                        <button onclick="${isPast ? '' : `toggleHabit(${h.id})`}" class="check-btn ${wasCompleted ? 'checked' : ''} flex-shrink-0">
+                            ${wasCompleted ? '<i data-lucide="check" class="w-4 h-4 text-white"></i>' : ''}
+                        </button>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="category-pill bg-${getCategoryColor(h.category)}-500/20 text-${getCategoryColor(h.category)}-400">${h.category}</span>
+                                ${h.streak > 0 ? `<span class="text-xs text-orange-400 flex items-center gap-1">🔥 ${h.streak}</span>` : ''}
+                            </div>
+                            <h4 class="font-medium truncate ${wasCompleted ? 'line-through text-gray-500' : ''}">${h.name}</h4>
+                        </div>
+                        ${isPast ? `<span class="text-xs text-gray-500">${wasCompleted ? '✓ Done' : '—'}</span>` : ''}
+                    </div>
+                `;
+            }).join('');
+            
+            lucide.createIcons();
+        }
+
+        function renderNotesForDate(dateStr) {
+            const container = document.getElementById('recent-notes');
+            const dayNotes = notes[dateStr] || [];
+            
+            if (dayNotes.length === 0) {
+                container.innerHTML = '<p class="text-sm text-gray-500 text-center py-4">No entries for this date.</p>';
+            } else {
+                container.innerHTML = dayNotes.map(n => `
+                    <div class="note-card rounded-lg p-3">
+                        <div class="flex justify-between items-start mb-2">
+                            <span class="text-xs text-gray-500">${new Date(n.timestamp).toLocaleTimeString()}</span>
+                        </div>
+                        <p class="text-sm text-gray-300 whitespace-pre-wrap">${n.content}</p>
+                    </div>
+                `).join('');
+            }
+        }
+
+        function renderPlaylistForDate(dateStr) {
+            const infoDiv = document.getElementById('past-playlist-info');
+            const contentDiv = document.getElementById('past-playlist-content');
+            const dayPlaylist = playlists[dateStr];
+            
+            if (dateStr !== today && dayPlaylist && dayPlaylist.length > 0) {
+                infoDiv.classList.remove('hidden');
+                contentDiv.innerHTML = dayPlaylist.map(v => `
+                    <div class="flex items-center gap-2 mb-2">
+                        <i data-lucide="play-circle" class="w-4 h-4 text-red-400"></i>
+                        <span class="truncate">${v.title || 'YouTube Video'}</span>
+                    </div>
+                `).join('');
+                lucide.createIcons();
+            } else {
+                infoDiv.classList.add('hidden');
+            }
+        }
+
+        // Streak Grid with Click Handler
+        function renderStreakGrid() {
+            const grid = document.getElementById('streak-grid');
+            const days = 365;
+            const cells = [];
+            let totalContributions = 0;
+            
+            for (let i = days; i >= 0; i--) {
+                const d = new Date();
+                d.setDate(d.getDate() - i);
+                const dateStr = d.toISOString().split('T')[0];
+                
+                const count = history[dateStr] ? history[dateStr].length : 0;
+                totalContributions += count;
+                
+                let level = 0;
+                if (count > 0) level = 1;
+                if (count >= 3) level = 2;
+                if (count >= 5) level = 3;
+                if (count >= 7) level = 4;
+                
+                cells.push(`<div class="streak-cell gh-level-${level}" data-date="${dateStr}" onclick="travelToDate('${dateStr}')" title="${dateStr}: ${count} habits"></div>`);
+            }
+            
+            grid.innerHTML = cells.join('');
+            document.getElementById('streak-stats').textContent = `${totalContributions} contributions in the last year`;
+        }
+
+        // Video Tab Switching
+        function switchVideoTab(tab, element) {
+            document.querySelectorAll('.video-tab').forEach(t => t.classList.remove('active'));
+            element.classList.add('active');
+            
+            document.querySelectorAll('.video-section').forEach(s => s.classList.add('hidden'));
+            document.getElementById(`video-${tab}`).classList.remove('hidden');
+            
+            lucide.createIcons();
+        }
+
+        // YouTube Functions
+        function extractYouTubeId(url) {
+            const patterns = [
+                /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/v\/|youtube\.com\/shorts\/)([^&\s?]+)/,
+                /^([a-zA-Z0-9_-]{11})$/
+            ];
+            for (let p of patterns) {
+                const m = url.match(p);
+                if (m && m[1]) return m[1];
+            }
+            return null;
+        }
+
+        function loadYouTubeVideo() {
+            const url = document.getElementById('youtube-url').value.trim();
+            const videoId = extractYouTubeId(url);
+            
+            if (!videoId) {
+                showNotification('Invalid YouTube URL');
+                return;
+            }
+            
+            currentVideoId = videoId;
+            const embedUrl = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1`;
+            
+            document.getElementById('youtube-player').innerHTML = `
+                <iframe src="${embedUrl}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+            `;
+        }
+
+        function quickYouTube(id) {
+            document.getElementById('youtube-url').value = `https://youtube.com/watch?v=${id}`;
+            loadYouTubeVideo();
+        }
+
+        function saveToPlaylist() {
+            if (!currentVideoId) {
+                showNotification('Play a video first!');
+                return;
+            }
+            
+            const url = document.getElementById('youtube-url').value.trim();
+            const title = `YouTube Video ${currentVideoId}`;
+            
+            // Save to today's playlist
+            if (!playlists[viewingDate]) playlists[viewingDate] = [];
+            
+            // Check if already exists
+            if (playlists[viewingDate].find(p => p.id === currentVideoId)) {
+                showNotification('Already in playlist!');
+                return;
+            }
+            
+            playlists[viewingDate].push({
+                id: currentVideoId,
+                url: url,
+                title: title,
+                added: new Date().toISOString()
+            });
+            
+            localStorage.setItem('lifeos_playlists', JSON.stringify(playlists));
+            renderPlaylist();
+            showNotification('Saved to playlist! ✅');
+        }
+
+        function renderPlaylist() {
+            const container = document.getElementById('playlist-items');
+            const todayPlaylist = playlists[viewingDate] || [];
+            
+            if (todayPlaylist.length === 0) {
+                container.innerHTML = '<p class="text-xs text-gray-500 text-center py-4">No videos saved for this date</p>';
+                return;
+            }
+            
+            container.innerHTML = todayPlaylist.map((item, idx) => `
+                <div class="playlist-item flex items-center gap-3 p-2 rounded-lg ${item.playing ? 'active' : ''}" onclick="playFromPlaylist('${item.id}', ${idx})">
+                    <div class="w-16 h-12 bg-gray-800 rounded overflow-hidden flex-shrink-0">
+                        <img src="https://img.youtube.com/vi/${item.id}/default.jpg" class="w-full h-full object-cover">
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-xs font-medium truncate">${item.title}</p>
+                        <p class="text-xs text-gray-500 truncate">${item.url}</p>
+                    </div>
+                    <button onclick="event.stopPropagation(); removeFromPlaylist(${idx})" class="p-1 hover:bg-red-500/20 rounded">
+                        <i data-lucide="x" class="w-4 h-4 text-gray-500 hover:text-red-400"></i>
+                    </button>
+                </div>
+            `).join('');
+            
+            lucide.createIcons();
+        }
+
+        function playFromPlaylist(videoId, idx) {
+            // Mark as playing
+            if (playlists[viewingDate]) {
+                playlists[viewingDate].forEach((p, i) => p.playing = (i === idx));
+                localStorage.setItem('lifeos_playlists', JSON.stringify(playlists));
+                renderPlaylist();
+            }
+            
+            const embedUrl = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1`;
+            document.getElementById('playlist-player').innerHTML = `
+                <iframe src="${embedUrl}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+            `;
+        }
+
+        function removeFromPlaylist(idx) {
+            if (playlists[viewingDate]) {
+                playlists[viewingDate].splice(idx, 1);
+                if (playlists[viewingDate].length === 0) delete playlists[viewingDate];
+                localStorage.setItem('lifeos_playlists', JSON.stringify(playlists));
+                renderPlaylist();
+            }
+        }
+
+        // Local Video Player
+        function playLocalVideo(index) {
+            const player = document.getElementById('local-video-player');
+            player.src = localVideos[index];
+            player.play();
+        }
+
+        // Habits Management
+        function toggleAddHabit() {
+            const form = document.getElementById('add-habit-form');
+            form.classList.toggle('hidden');
+        }
+
+        function handleAddHabit(e) {
+            e.preventDefault();
+            const name = document.getElementById('new-habit-name').value;
+            const category = document.getElementById('new-habit-category').value;
+            
+            const habit = {
+                id: Date.now(),
+                name,
+                category,
+                created: today,
+                streak: 0,
+                completed: false,
+                total: 0
+            };
+            
+            habits.push(habit);
+            saveHabits();
+            renderHabitsForDate(viewingDate);
+            toggleAddHabit();
+            e.target.reset();
+        }
+
+        function toggleHabit(id) {
+            if (viewingDate !== today) return; // Can't toggle in past
+            
+            const habit = habits.find(h => h.id === id);
+            if (!habit) return;
+            
+            habit.completed = !habit.completed;
+            
+            if (habit.completed) {
+                habit.total++;
+                habit.streak++;
+                if (!history[viewingDate]) history[viewingDate] = [];
+                if (!history[viewingDate].includes(id)) history[viewingDate].push(id);
+                createConfetti();
+            } else {
+                habit.streak = Math.max(0, habit.streak - 1);
+                if (history[viewingDate]) {
+                    history[viewingDate] = history[viewingDate].filter(hid => hid !== id);
+                }
+            }
+            
+            saveHabits();
+            saveHistory();
+            renderHabitsForDate(viewingDate);
+            renderStreakGrid();
+            updateStats();
+        }
+
+        function deleteHabit(id) {
+            if (confirm('Delete this habit?')) {
+                habits = habits.filter(h => h.id !== id);
+                saveHabits();
+                renderHabitsForDate(viewingDate);
+            }
+        }
+
+        // Notes
+        function saveDailyNote() {
+            if (viewingDate !== today) {
+                showNotification("Can't add notes to past dates!");
+                return;
+            }
+            
+            const content = document.getElementById('daily-note').value.trim();
+            if (!content) return;
+            
+            const note = {
+                id: Date.now(),
+                date: viewingDate,
+                content,
+                timestamp: new Date().toISOString()
+            };
+            
+            if (!notes[viewingDate]) notes[viewingDate] = [];
+            notes[viewingDate].push(note);
+            
+            saveNotes();
+            renderNotesForDate(viewingDate);
+            document.getElementById('daily-note').value = '';
+            document.getElementById('note-count').textContent = '0 characters';
+            showNotification('Note saved!');
+        }
+
+        function renderNotes() {
+            const container = document.getElementById('all-notes');
+            const allNotes = Object.values(notes).flat().sort((a, b) => b.id - a.id);
+            
+            container.innerHTML = allNotes.map(n => `
+                <div class="glass-panel rounded-xl p-4">
+                    <div class="flex justify-between items-start mb-3">
+                        <span class="text-xs text-gray-500">${new Date(n.date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                    </div>
+                    <p class="text-sm text-gray-300 whitespace-pre-wrap">${n.content}</p>
+                </div>
+            `).join('');
+        }
+
+        // Roadmap
+        function renderRoadmap() {
+            const container = document.getElementById('roadmap-container');
+            
+            if (roadmap.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-12 text-gray-500">
+                        <i data-lucide="map" class="w-16 h-16 mx-auto mb-4 opacity-30"></i>
+                        <p>No roadmap yet. Import or add milestones!</p>
+                    </div>
+                `;
+                lucide.createIcons();
+                return;
+            }
+            
+            const grouped = roadmap.reduce((acc, item) => {
+                if (!acc[item.category]) acc[item.category] = [];
+                acc[item.category].push(item);
+                return acc;
+            }, {});
+            
+            let html = '';
+            for (let category in grouped) {
+                html += `<div class="mb-8"><h3 class="font-bold text-lg mb-4 capitalize text-${getCategoryColor(category)}-400">${category}</h3>`;
+                html += grouped[category].map(item => `
+                    <div class="roadmap-node ${item.completed ? 'completed' : ''}" data-id="${item.id}">
+                        <div class="glass-panel rounded-xl p-4 ml-4 ${item.completed ? 'opacity-60' : ''}">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <h4 class="font-medium ${item.completed ? 'line-through' : ''}">${item.title}</h4>
+                                    <p class="text-sm text-gray-500 mt-1">${item.description || ''}</p>
+                                    ${item.deadline ? `<p class="text-xs text-gray-600 mt-2">📅 ${new Date(item.deadline).toLocaleDateString()}</p>` : ''}
+                                </div>
+                                <div class="flex gap-2">
+                                    <button onclick="toggleMilestone(${item.id})" class="p-2 rounded-lg ${item.completed ? 'bg-green-500/20 text-green-400' : 'bg-gray-800 text-gray-400'}">
+                                        <i data-lucide="${item.completed ? 'check-circle-2' : 'circle'}" class="w-5 h-5"></i>
+                                    </button>
+                                    <button onclick="deleteMilestone(${item.id})" class="p-2 rounded-lg bg-gray-800 text-gray-400 hover:text-red-400">
+                                        <i data-lucide="trash-2" class="w-5 h-5"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+                html += '</div>';
+            }
+            
+            container.innerHTML = html;
+            lucide.createIcons();
+            updateRoadmapStats();
+        }
+
+        function addMilestone() {
+            const title = prompt('Milestone title:');
+            if (!title) return;
+            const category = prompt('Category (academic/career/personal):', 'career');
+            const description = prompt('Description (optional):', '');
+            
+            roadmap.push({
+                id: Date.now(),
+                title,
+                category: category || 'career',
+                description,
+                completed: false,
+                created: today
+            });
+            
+            saveRoadmap();
+            renderRoadmap();
+        }
+
+        function toggleMilestone(id) {
+            const item = roadmap.find(r => r.id === id);
+            if (item) {
+                item.completed = !item.completed;
+                saveRoadmap();
+                renderRoadmap();
+                if (item.completed) createConfetti();
+            }
+        }
+
+        function deleteMilestone(id) {
+            roadmap = roadmap.filter(r => r.id !== id);
+            saveRoadmap();
+            renderRoadmap();
+        }
+
+        function updateRoadmapStats() {
+            ['academic', 'career', 'personal'].forEach(cat => {
+                const items = roadmap.filter(r => r.category === cat);
+                const completed = items.filter(r => r.completed).length;
+                const total = items.length;
+                const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+                
+                document.getElementById(`${cat}-progress`).textContent = `${pct}%`;
+                document.getElementById(`${cat}-bar`).style.width = `${pct}%`;
+            });
+            
+            const active = roadmap.filter(r => !r.completed).slice(0, 3);
+            const container = document.getElementById('active-goals');
+            
+            if (active.length === 0) {
+                container.innerHTML = '<p class="text-sm text-gray-500 text-center py-4">No active goals</p>';
+            } else {
+                container.innerHTML = active.map(g => `
+                    <div class="flex items-center gap-3 p-3 rounded-lg bg-gray-800/50">
+                        <div class="w-2 h-2 rounded-full bg-${getCategoryColor(g.category)}-500"></div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-medium truncate">${g.title}</p>
+                            <p class="text-xs text-gray-500 capitalize">${g.category}</p>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+
+        // Profile
+        function loadProfile() {
+            document.getElementById('user-name').textContent = profile.name;
+            document.getElementById('profile-name').textContent = profile.name;
+            document.getElementById('profile-bio').textContent = profile.bio;
+            document.getElementById('settings-name').value = profile.name;
+            document.getElementById('settings-bio').value = profile.bio;
+            
+            if (profile.image) {
+                document.getElementById('profile-img').src = profile.image;
+                document.getElementById('nav-profile-img').src = profile.image;
+                document.getElementById('settings-profile-img').src = profile.image;
+            }
+        }
+
+        function handleProfileUpload(e, context) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                profile.image = event.target.result;
+                saveProfile();
+                loadProfile();
+                showNotification('Profile photo updated!');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function saveProfileSettings(e) {
+            e.preventDefault();
+            profile.name = document.getElementById('settings-name').value || 'User';
+            profile.bio = document.getElementById('settings-bio').value || 'Building better habits daily';
+            profile.reminderTime = document.getElementById('settings-time').value;
+            saveProfile();
+            loadProfile();
+            showNotification('Profile saved!');
+        }
+
+        // Stats
+        function updateStats() {
+            const dayHistory = history[viewingDate] || [];
+            const completed = dayHistory.length;
+            const total = habits.length;
+            
+            document.getElementById('header-completed').textContent = `${completed}/${total}`;
+            
+            const totalStreak = habits.reduce((a, h) => a + h.streak, 0);
+            document.getElementById('header-streak').textContent = totalStreak;
+            document.getElementById('current-streak').textContent = `🔥 ${totalStreak} days`;
+            
+            const totalDone = Object.values(history).reduce((a, day) => a + day.length, 0);
+            document.getElementById('header-total').textContent = totalDone;
+            
+            let bestDay = '-';
+            let maxCount = 0;
+            for (let date in history) {
+                if (history[date].length > maxCount) {
+                    maxCount = history[date].length;
+                    bestDay = new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                }
+            }
+            document.getElementById('header-best').textContent = bestDay;
+            
+            // Week grid
+            const weekGrid = document.getElementById('week-grid');
+            const days = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+            const todayObj = new Date();
+            let weekHtml = '';
+            
+            for (let i = 6; i >= 0; i--) {
+                const d = new Date(todayObj);
+                d.setDate(d.getDate() - i);
+                const dateStr = d.toISOString().split('T')[0];
+                const isToday = i === 0;
+                const count = history[dateStr] ? history[dateStr].length : 0;
+                
+                let bg = 'bg-gray-800';
+                if (count > 0) bg = 'bg-green-600';
+                if (isToday && count === 0) bg = 'bg-blue-600';
+                
+                weekHtml += `<div class="aspect-square rounded-lg ${bg} flex items-center justify-center text-xs font-bold ${count > 0 ? 'text-white' : 'text-gray-500'}">${days[d.getDay()]}</div>`;
+            }
+            weekGrid.innerHTML = weekHtml;
+        }
+
+        // Utilities
+        function getCategoryColor(cat) {
+            const colors = { health: 'green', career: 'blue', learning: 'yellow', creative: 'purple', social: 'pink' };
+            return colors[cat] || 'gray';
+        }
+
+        function createConfetti() {
+            const colors = ['#238636', '#58a6ff', '#a371f7', '#f0883e', '#f85149'];
+            for (let i = 0; i < 20; i++) {
+                const conf = document.createElement('div');
+                conf.className = 'confetti';
+                conf.style.left = Math.random() * window.innerWidth + 'px';
+                conf.style.top = '-10px';
+                conf.style.width = '8px';
+                conf.style.height = '8px';
+                conf.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                conf.style.borderRadius = Math.random() > 0.5 ? '50%' : '0';
+                conf.style.animation = `confetti-fall ${Math.random() * 2 + 2}s linear forwards`;
+                document.body.appendChild(conf);
+                setTimeout(() => conf.remove(), 4000);
+            }
+        }
+
+        function showNotification(msg) {
+            const div = document.createElement('div');
+            div.className = 'fixed top-4 right-4 bg-green-600 text-white px-4 py-3 rounded-lg shadow-lg z-[70] animate-fade-in';
+            div.textContent = msg;
+            document.body.appendChild(div);
+            setTimeout(() => div.remove(), 3000);
+        }
+
+        function showPage(page) {
+            currentPage = page;
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById(`page-${page}`).classList.add('active');
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            document.querySelectorAll(`[data-page="${page}"]`).forEach(n => n.classList.add('active'));
+            lucide.createIcons();
+            window.scrollTo(0, 0);
+        }
+
+        function exportNotes() {
+            const dataStr = JSON.stringify(notes, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `journal-${today}.json`;
+            a.click();
+        }
+
+        function clearAllData() {
+            if (confirm('WARNING: This will delete ALL your data. Are you sure?')) {
+                localStorage.clear();
+                location.reload();
+            }
+        }
+
+        // Storage helpers
+        function saveHabits() { localStorage.setItem('lifeos_habits', JSON.stringify(habits)); }
+        function saveNotes() { localStorage.setItem('lifeos_notes', JSON.stringify(notes)); }
+        function saveRoadmap() { localStorage.setItem('lifeos_roadmap', JSON.stringify(roadmap)); }
+        function saveProfile() { localStorage.setItem('lifeos_profile', JSON.stringify(profile)); }
+        function saveHistory() { localStorage.setItem('lifeos_history', JSON.stringify(history)); }
+
+        // Add animation styles
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes confetti-fall {
+                0% { transform: translateY(-100vh) rotate(0deg); opacity: 1; }
+                100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+            }
+            .animate-fade-in { animation: fadeIn 0.3s ease; }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>
