@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LifeOS - Habit & Career Tracker</title>
+    <title>NESTING - Habit & Career Tracker</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
@@ -91,6 +91,40 @@
         }
 
         .nav-item span { font-size: 0.7rem; }
+
+        .brand-logo {
+            width: 42px;
+            height: 42px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.95);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 8px 24px rgba(31, 111, 235, 0.25);
+            overflow: hidden;
+        }
+
+        .brand-logo-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 12px;
+        }
+
+        .brand-logo-fallback {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #238636 0%, #1f6feb 100%);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+        }
+
+        .brand-logo-fallback svg {
+            width: 24px;
+            height: 24px;
+        }
 
         .habit-card {
             background: rgba(22, 27, 34, 0.6);
@@ -329,8 +363,15 @@
     <nav class="desktop-nav glass-panel fixed top-0 left-0 right-0 z-50 px-6 py-4" id="desktop-nav">
         <div class="max-w-7xl mx-auto flex justify-between items-center">
             <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-full bg-gradient-to-br from-green-500 to-blue-600 flex items-center justify-center font-bold text-lg">L</div>
-                <span class="font-bold text-xl tracking-tight">LifeOS</span>
+                <div class="brand-logo cursor-pointer" aria-label="NESTING logo" title="Click to upload logo" onclick="document.getElementById('logo-input').click()">
+                    <img id="brand-logo-img" src="nesting-logo.png" alt="NESTING logo" class="brand-logo-image" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                    <span class="brand-logo-fallback" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M5 18V6L19 18V6" stroke="white" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </span>
+                </div>
+                <span class="font-bold text-xl tracking-tight">NESTING</span>
             </div>
             
             <div class="flex items-center gap-1">
@@ -743,18 +784,41 @@
     </main>
 
     <input type="file" id="roadmap-import" accept=".json" class="hidden" onchange="handleRoadmapImport(event)">
+    <input type="file" id="profile-input" accept="image/*" class="hidden" onchange="handleProfileUpload(event, 'nav')">
+    <input type="file" id="logo-input" accept="image/*" class="hidden" onchange="handleBrandLogoUpload(event)">
 
     <script>
         // Global State
+        const STORAGE_KEYS = {
+            habits: 'nesting_habits',
+            notes: 'nesting_notes',
+            roadmap: 'nesting_roadmap',
+            profile: 'nesting_profile',
+            history: 'nesting_history',
+            playlists: 'nesting_playlists',
+            uiState: 'nesting_ui_state',
+            logo: 'nesting_logo'
+        };
+
+        function getStored(primaryKey, legacyKey) {
+            const raw = localStorage.getItem(primaryKey) ?? (legacyKey ? localStorage.getItem(legacyKey) : null);
+            if (!raw) return null;
+            try {
+                return JSON.parse(raw);
+            } catch {
+                return null;
+            }
+        }
+
         let currentPage = 'dashboard';
         let viewingDate = new Date().toISOString().split('T')[0];
         let today = new Date().toISOString().split('T')[0];
-        let habits = JSON.parse(localStorage.getItem('lifeos_habits')) || [];
-        let notes = JSON.parse(localStorage.getItem('lifeos_notes')) || {};
-        let roadmap = JSON.parse(localStorage.getItem('lifeos_roadmap')) || [];
-        let profile = JSON.parse(localStorage.getItem('lifeos_profile')) || { name: 'User', bio: 'Building better habits daily' };
-        let history = JSON.parse(localStorage.getItem('lifeos_history')) || {};
-        let playlists = JSON.parse(localStorage.getItem('lifeos_playlists')) || {};
+        let habits = getStored(STORAGE_KEYS.habits, 'lifeos_habits') || [];
+        let notes = getStored(STORAGE_KEYS.notes, 'lifeos_notes') || {};
+        let roadmap = getStored(STORAGE_KEYS.roadmap, 'lifeos_roadmap') || [];
+        let profile = getStored(STORAGE_KEYS.profile, 'lifeos_profile') || { name: 'User', bio: 'Building better habits daily' };
+        let history = getStored(STORAGE_KEYS.history, 'lifeos_history') || {};
+        let playlists = getStored(STORAGE_KEYS.playlists, 'lifeos_playlists') || {};
         let currentVideoId = null;
 
         // Local video sources
@@ -775,7 +839,9 @@
             renderPlaylist();
             updateStats();
             loadProfile();
+            loadBrandLogo();
             setupDatePicker();
+            restoreUiState();
         });
 
         function init() {
@@ -786,6 +852,21 @@
             document.getElementById('daily-note').addEventListener('input', (e) => {
                 document.getElementById('note-count').textContent = `${e.target.value.length} characters`;
             });
+        }
+
+        function restoreUiState() {
+            const uiState = getStored(STORAGE_KEYS.uiState, 'lifeos_ui_state') || {};
+            const safeDate = uiState.viewingDate && uiState.viewingDate <= today ? uiState.viewingDate : today;
+            document.getElementById('date-picker').value = safeDate;
+            travelToDate(safeDate);
+            showPage(uiState.currentPage || 'dashboard');
+        }
+
+        function saveUiState() {
+            localStorage.setItem(STORAGE_KEYS.uiState, JSON.stringify({
+                currentPage,
+                viewingDate
+            }));
         }
 
         function setupDatePicker() {
@@ -844,6 +925,9 @@
             document.querySelectorAll('.streak-cell').forEach(cell => cell.classList.remove('selected'));
             const selectedCell = document.querySelector(`[data-date="${dateStr}"]`);
             if (selectedCell) selectedCell.classList.add('selected');
+            renderPlaylist();
+            updateStats();
+            saveUiState();
             
             lucide.createIcons();
         }
@@ -885,6 +969,10 @@
             }).join('');
             
             lucide.createIcons();
+        }
+
+        function renderHabits() {
+            renderHabitsForDate(viewingDate);
         }
 
         function renderNotesForDate(dateStr) {
@@ -1023,7 +1111,7 @@
                 added: new Date().toISOString()
             });
             
-            localStorage.setItem('lifeos_playlists', JSON.stringify(playlists));
+            savePlaylists();
             renderPlaylist();
             showNotification('Saved to playlist! ✅');
         }
@@ -1059,7 +1147,7 @@
             // Mark as playing
             if (playlists[viewingDate]) {
                 playlists[viewingDate].forEach((p, i) => p.playing = (i === idx));
-                localStorage.setItem('lifeos_playlists', JSON.stringify(playlists));
+                savePlaylists();
                 renderPlaylist();
             }
             
@@ -1073,7 +1161,7 @@
             if (playlists[viewingDate]) {
                 playlists[viewingDate].splice(idx, 1);
                 if (playlists[viewingDate].length === 0) delete playlists[viewingDate];
-                localStorage.setItem('lifeos_playlists', JSON.stringify(playlists));
+                savePlaylists();
                 renderPlaylist();
             }
         }
@@ -1188,6 +1276,41 @@
                     <p class="text-sm text-gray-300 whitespace-pre-wrap">${n.content}</p>
                 </div>
             `).join('');
+        }
+
+        function importRoadmap() {
+            document.getElementById('roadmap-import').click();
+        }
+
+        function handleRoadmapImport(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const imported = JSON.parse(e.target.result);
+                    if (!Array.isArray(imported)) throw new Error('Invalid roadmap format');
+                    roadmap = imported;
+                    saveRoadmap();
+                    renderRoadmap();
+                    showNotification('Roadmap imported');
+                } catch {
+                    showNotification('Invalid roadmap JSON');
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = '';
+        }
+
+        function exportRoadmap() {
+            const dataStr = JSON.stringify(roadmap, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `roadmap-${today}.json`;
+            a.click();
         }
 
         // Roadmap
@@ -1310,13 +1433,11 @@
         // Profile
         function loadProfile() {
             document.getElementById('user-name').textContent = profile.name;
-            document.getElementById('profile-name').textContent = profile.name;
-            document.getElementById('profile-bio').textContent = profile.bio;
             document.getElementById('settings-name').value = profile.name;
             document.getElementById('settings-bio').value = profile.bio;
+            document.getElementById('settings-time').value = profile.reminderTime || '';
             
             if (profile.image) {
-                document.getElementById('profile-img').src = profile.image;
                 document.getElementById('nav-profile-img').src = profile.image;
                 document.getElementById('settings-profile-img').src = profile.image;
             }
@@ -1344,6 +1465,35 @@
             saveProfile();
             loadProfile();
             showNotification('Profile saved!');
+        }
+
+        function loadBrandLogo() {
+            const logoData = localStorage.getItem(STORAGE_KEYS.logo);
+            if (!logoData) return;
+
+            const logoImg = document.getElementById('brand-logo-img');
+            if (!logoImg) return;
+
+            logoImg.style.display = 'block';
+            logoImg.src = logoData;
+            if (logoImg.nextElementSibling) {
+                logoImg.nextElementSibling.style.display = 'none';
+            }
+        }
+
+        function handleBrandLogoUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const logoData = event.target.result;
+                localStorage.setItem(STORAGE_KEYS.logo, logoData);
+                loadBrandLogo();
+                showNotification('Logo updated!');
+            };
+            reader.readAsDataURL(file);
+            e.target.value = '';
         }
 
         // Stats
@@ -1430,6 +1580,7 @@
             document.getElementById(`page-${page}`).classList.add('active');
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
             document.querySelectorAll(`[data-page="${page}"]`).forEach(n => n.classList.add('active'));
+            saveUiState();
             lucide.createIcons();
             window.scrollTo(0, 0);
         }
@@ -1446,17 +1597,19 @@
 
         function clearAllData() {
             if (confirm('WARNING: This will delete ALL your data. Are you sure?')) {
-                localStorage.clear();
+                Object.values(STORAGE_KEYS).forEach((k) => localStorage.removeItem(k));
+                ['lifeos_habits', 'lifeos_notes', 'lifeos_roadmap', 'lifeos_profile', 'lifeos_history', 'lifeos_playlists', 'lifeos_ui_state'].forEach((k) => localStorage.removeItem(k));
                 location.reload();
             }
         }
 
         // Storage helpers
-        function saveHabits() { localStorage.setItem('lifeos_habits', JSON.stringify(habits)); }
-        function saveNotes() { localStorage.setItem('lifeos_notes', JSON.stringify(notes)); }
-        function saveRoadmap() { localStorage.setItem('lifeos_roadmap', JSON.stringify(roadmap)); }
-        function saveProfile() { localStorage.setItem('lifeos_profile', JSON.stringify(profile)); }
-        function saveHistory() { localStorage.setItem('lifeos_history', JSON.stringify(history)); }
+        function saveHabits() { localStorage.setItem(STORAGE_KEYS.habits, JSON.stringify(habits)); }
+        function saveNotes() { localStorage.setItem(STORAGE_KEYS.notes, JSON.stringify(notes)); }
+        function saveRoadmap() { localStorage.setItem(STORAGE_KEYS.roadmap, JSON.stringify(roadmap)); }
+        function saveProfile() { localStorage.setItem(STORAGE_KEYS.profile, JSON.stringify(profile)); }
+        function saveHistory() { localStorage.setItem(STORAGE_KEYS.history, JSON.stringify(history)); }
+        function savePlaylists() { localStorage.setItem(STORAGE_KEYS.playlists, JSON.stringify(playlists)); }
 
         // Add animation styles
         const style = document.createElement('style');
