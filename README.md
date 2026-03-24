@@ -4,7 +4,7 @@
 
 > **Your complete personal operating system. Track habits, journal daily, manage career roadmaps, and stay motivated—all in one beautiful, offline-first web app.**
 
-[Live Demo](https://your-deployment-url.com) • [Features](#features) • [Installation](#installation) • [Roadmap](#roadmap)
+[Live Demo](https://your-deployment-url.com) • [Features](#features) • [Roadmap](#roadmap)
 
 ---
 
