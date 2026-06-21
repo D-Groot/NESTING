@@ -1,10 +1,10 @@
 
-# LifeOS - Ultimate Habit & Career Tracker
+# Nesting - Ultimate Habit & Career Tracker
 
 
 > **Your complete personal operating system. Track habits, journal daily, manage career roadmaps, and stay motivated—all in one beautiful, offline-first web app.**
 
-[Live Demo](https://your-deployment-url.com) • [Features](#features) • [Roadmap](#roadmap)
+[Live Demo](https://nestingg.netlify.app) • [Features](#features) • [Roadmap](#roadmap)
 
 ---
 
